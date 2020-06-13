@@ -43,9 +43,8 @@ func (cc *ChatConn) Join(s *server, room string) (*nats.Subscription, error) {
 	if err != nil {
 		log.WithError(err).Error("could not create token")
 	}
-	var sub *nats.Subscription
 
-	sub, err = s.nc.Subscribe(room, func(msg *nats.Msg) {
+	sub, err := s.nc.Subscribe(room, func(msg *nats.Msg) {
 		var reqMsg Req
 		err := json.Unmarshal(msg.Data, &reqMsg)
 		if err != nil {
@@ -69,7 +68,6 @@ func (cc *ChatConn) Join(s *server, room string) (*nats.Subscription, error) {
 		err = cc.Conn.WriteMessage(websocket.TextMessage, m)
 		if err != nil {
 			log.WithError(err).Error("could not write to websocket")
-			sub.Unsubscribe()
 		}
 	})
 

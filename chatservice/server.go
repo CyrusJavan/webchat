@@ -2,8 +2,6 @@ package chatservice
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -11,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"html/template"
 	"net/http"
-	"os"
 )
 
 type KeyValueStore interface {
@@ -70,10 +67,17 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		log.Print("upgrade:", err)
 		return
 	}
-	defer c.Close()
-
 	var sub *nats.Subscription
-	defer sub.Unsubscribe()
+	defer c.Close()
+	closer := c.CloseHandler()
+	c.SetCloseHandler(func(code int, text string) error {
+		err := sub.Drain()
+		if err != nil {
+			log.WithError(err).Error("draining subscription issue")
+		}
+
+		return closer(code, text)
+	})
 
 	cc := &ChatConn{
 		ID: uuid.New().String(),
@@ -84,7 +88,7 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		_, message, err := c.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
-			break
+			return
 		}
 		log.Printf("recv: %s", message)
 
@@ -92,6 +96,7 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal(message, &req)
 		if err != nil {
 			log.Println("json unmarshal:", err)
+			return
 		}
 
 		switch req.Action {
@@ -106,27 +111,10 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		case "send":
-			token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
-				// Don't forget to validate the alg is what you expect:
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				}
-
-				key := []byte(os.Getenv("JWTKEY"))
-				return key, nil
-			})
+			claims, err := GetClaims(req.Token)
 			if err != nil {
-				log.WithError(err).Error("could not parse token")
 				return
 			}
-
-			claims, ok := token.Claims.(jwt.MapClaims)
-
-			if !ok || !token.Valid {
-				log.Error("invalid token")
-				return
-			}
-
 			claimedID := claims["id"].(string)
 
 			if claimedID != req.ID {

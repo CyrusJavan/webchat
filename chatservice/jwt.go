@@ -1,6 +1,7 @@
 package chatservice
 
 import (
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"os"
 )
@@ -18,4 +19,27 @@ func GetToken(m map[string]interface{}) (string, error) {
 	}
 
 	return tokenString, nil
+}
+
+func GetClaims(t string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		key := []byte(os.Getenv("JWTKEY"))
+		return key, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not parse token: %w", err)
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+
+	if !ok || !token.Valid {
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	return claims, nil
 }
