@@ -2,6 +2,8 @@ package chatservice
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -9,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"html/template"
 	"net/http"
+	"os"
 )
 
 type KeyValueStore interface {
@@ -27,12 +30,14 @@ type Req struct {
 	Room string
 	Message string
 	ID string
+	Token string
 }
 
 type Resp struct {
-	ID string `json:"id"`
-	Message string `json:"message"`
-	Subscribed bool `json:"subscribed"`
+	ID string `json:"id,omitempty"`
+	Token string `json:"token,omitempty"`
+	Message string `json:"message,omitempty"`
+	Action string `json:"action,omitempty"`
 }
 
 func NewServer(nc *nats.Conn) *server {
@@ -67,6 +72,9 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
+	var sub *nats.Subscription
+	defer sub.Unsubscribe()
+
 	cc := &ChatConn{
 		ID: uuid.New().String(),
 		Conn: c,
@@ -88,12 +96,47 @@ func (s *server) ChatHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch req.Action {
 		case "join":
-			if err := cc.Join(s, req.Room); err != nil {
+			sub, err = cc.Join(s, req.Room)
+			if err != nil {
 				log.WithError(err).Error("could not join")
+				if sub != nil {
+					if err := sub.Unsubscribe(); err != nil {
+						return
+					}
+				}
 			}
 		case "send":
+			token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
+				// Don't forget to validate the alg is what you expect:
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+
+				key := []byte(os.Getenv("JWTKEY"))
+				return key, nil
+			})
+			if err != nil {
+				log.WithError(err).Error("could not parse token")
+				return
+			}
+
+			claims, ok := token.Claims.(jwt.MapClaims)
+
+			if !ok || !token.Valid {
+				log.Error("invalid token")
+				return
+			}
+
+			claimedID := claims["id"].(string)
+
+			if claimedID != req.ID {
+				log.Errorf("client sent wrong id. claimed:%s actual:%s", claimedID, req.ID)
+				return
+			}
+
 			if err := cc.Send(s, req.Room, req.Message); err != nil {
 				log.WithError(err).Error("could not send")
+				return
 			}
 		}
 	}

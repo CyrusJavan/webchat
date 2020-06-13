@@ -19,6 +19,7 @@ func (cc *ChatConn) Send(s *server, room, message string) error {
 	m, err := json.Marshal(Resp{
 		ID: cc.ID,
 		Message: message,
+		Action: "message",
 	})
 	if err != nil {
 		return fmt.Errorf("could not marshal:%w", err)
@@ -33,14 +34,22 @@ func (cc *ChatConn) Send(s *server, room, message string) error {
 	return nil
 }
 
-func (cc *ChatConn) Join(s *server, room string) error {
+func (cc *ChatConn) Join(s *server, room string) (*nats.Subscription, error) {
 	s.CreateRoomIfNotExist(room)
 
-	_, err := s.nc.Subscribe(room, func(msg *nats.Msg) {
+	token, err := GetToken(map[string]interface{}{
+		"id": cc.ID,
+	})
+	if err != nil {
+		log.WithError(err).Error("could not create token")
+	}
+	var sub *nats.Subscription
+
+	sub, err = s.nc.Subscribe(room, func(msg *nats.Msg) {
 		var reqMsg Req
 		err := json.Unmarshal(msg.Data, &reqMsg)
 		if err != nil {
-			log.Println("json unmarshal:", err)
+			log.WithError(err).Error("could not unmarshal message from queue")
 		}
 
 		if reqMsg.ID == cc.ID {
@@ -48,38 +57,39 @@ func (cc *ChatConn) Join(s *server, room string) error {
 		}
 
 		m, err := json.Marshal(Resp{
+			Token: token,
 			ID: reqMsg.ID,
 			Message: reqMsg.Message,
-			Subscribed: false,
+			Action: "message",
 		})
 		if err != nil {
-			log.WithError(err).Print("could not marshal")
+			log.WithError(err).Error("could not marshal message to send")
 		}
 
 		err = cc.Conn.WriteMessage(websocket.TextMessage, m)
 		if err != nil {
-			log.Println("write:", err)
+			log.WithError(err).Error("could not write to websocket")
+			sub.Unsubscribe()
 		}
-
-		log.Println(reqMsg)
 	})
 
 	if err != nil {
-		return fmt.Errorf("subscribe:%w", err)
+		return nil, fmt.Errorf("subscribe:%w", err)
 	}
 
 	m, err := json.Marshal(Resp{
+		Token: token,
 		ID: cc.ID,
-		Subscribed: true,
+		Action: "joined",
 	})
 	if err != nil {
-		return fmt.Errorf("could not marshal:%w", err)
+		return sub, fmt.Errorf("could not marshal:%w", err)
 	}
 
 	err = cc.Conn.WriteMessage(websocket.TextMessage, m)
 	if err != nil {
-		return fmt.Errorf("write subscribe:%w", err)
+		return sub, fmt.Errorf("write subscribe:%w", err)
 	}
 
-	return nil
+	return sub, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/CyrusJavan/webchat/chatservice"
+	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -14,6 +15,10 @@ import (
 
 func main() {
 	log.Info("starting service")
+	err := godotenv.Load()
+	if err != nil {
+		log.WithError(err).Fatal("error loading .env file")
+	}
 
 	if err := run(); err != nil {
 		log.WithError(err).Error("run returned with error")
