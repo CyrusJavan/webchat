@@ -6,7 +6,6 @@ metadata:
   name: nats-service
 
 spec:
-  type: LoadBalancer
   ports:
     - port: 4222
   selector:
