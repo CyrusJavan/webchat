@@ -1,9 +1,9 @@
-localhost
+:80
 
 @golang {
   path /
   path /chat
 }
 
-reverse_proxy @golang 127.0.0.1:8080
+reverse_proxy @golang go-web-service:8080
 file_server /pub/* browse

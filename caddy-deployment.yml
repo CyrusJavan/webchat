@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: webchat-caddy
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: webchat-caddy
+  template:
+    metadata:
+      labels:
+        name: webchat-caddy
+    spec:
+      containers:
+        - name: application
+          image: cjavan/caddy-go
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80

@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: webchat-nats
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: webchat-nats
+  template:
+    metadata:
+      labels:
+        name: webchat-nats
+    spec:
+      containers:
+        - name: application
+          image: nats
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4222

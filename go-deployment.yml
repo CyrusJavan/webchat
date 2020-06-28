@@ -1,0 +1,23 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: webchat-go
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: webchat-go
+  template:
+    metadata:
+      labels:
+        name: webchat-go
+    spec:
+      containers:
+      - name: application
+        image: cjavan/webchat-go
+        imagePullPolicy: IfNotPresent
+        ports:
+         - containerPort: 8080

@@ -34,7 +34,7 @@ func run() error {
 	chatServer := chatservice.NewServer(nc)
 
 	srv := http.Server{
-		Addr: "localhost:8080",
+		Addr: ":8080",
 		Handler: chatServer,
 	}
 
