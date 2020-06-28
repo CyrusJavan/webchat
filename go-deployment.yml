@@ -18,6 +18,5 @@ spec:
       containers:
       - name: application
         image: cjavan/webchat-go
-        imagePullPolicy: IfNotPresent
         ports:
          - containerPort: 8080
