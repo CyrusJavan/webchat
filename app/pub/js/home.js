@@ -9,7 +9,7 @@ window.addEventListener("load", function (evt) {
         d.textContent = message;
         output.appendChild(d);
     };
-    ws = new WebSocket("wss://localhost/chat");
+    ws = new WebSocket("ws://" + location.hostname + "/chat");
     ws.onopen = function (evt) {
         print("OPEN");
         let toSend = {
