@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <script src="/app/pub/pub/js/home.js"></script>
+  <script src="/pub/js/home.js"></script>
   <title>Web Chat</title>
 </head>
 <body>

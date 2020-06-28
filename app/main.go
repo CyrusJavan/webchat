@@ -26,7 +26,7 @@ func main() {
 }
 
 func run() error {
-	nc, err := nats.Connect(nats.DefaultURL, nil)
+	nc, err := nats.Connect("nats-service", nil)
 	if err != nil {
 		return fmt.Errorf("could not connect to nats server: %w", err)
 	}

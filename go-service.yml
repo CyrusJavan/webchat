@@ -8,7 +8,6 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - port: 80
-      targetPort: 8080
+    - port: 8080
   selector:
     name: webchat-go
