@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/CyrusJavan/webchat/chatservice"
-	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -14,19 +13,18 @@ import (
 )
 
 func main() {
-	log.Info("starting service")
-	err := godotenv.Load()
-	if err != nil {
-		log.WithError(err).Fatal("error loading .env file")
-	}
-
 	if err := run(); err != nil {
 		log.WithError(err).Error("run returned with error")
 	}
 }
 
 func run() error {
-	nc, err := nats.Connect("nats-service", nil)
+	natsUrl := "nats-service"
+	if os.Getenv("DEVELOPMENT_MODE") == "TRUE" {
+		natsUrl = nats.DefaultURL
+	}
+
+	nc, err := nats.Connect(natsUrl, nil)
 	if err != nil {
 		return fmt.Errorf("could not connect to nats server: %w", err)
 	}
