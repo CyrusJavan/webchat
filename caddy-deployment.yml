@@ -20,3 +20,4 @@ spec:
           image: cjavan/caddy-go
           ports:
             - containerPort: 80
+            - containerPort: 443
